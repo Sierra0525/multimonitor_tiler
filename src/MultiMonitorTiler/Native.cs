@@ -14,6 +14,13 @@ internal struct RECT
     public readonly int Height => Bottom - Top;
 }
 
+[StructLayout(LayoutKind.Sequential)]
+internal struct SIZE
+{
+    public int cx;
+    public int cy;
+}
+
 [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
 internal struct MONITORINFOEX
 {
@@ -30,24 +37,35 @@ internal enum MONITOR_DPI_TYPE
     MDT_EFFECTIVE_DPI = 0,
 }
 
-[Flags]
-internal enum SetWindowPosFlags : uint
-{
-    SWP_NOZORDER = 0x0004,
-    SWP_NOACTIVATE = 0x0010,
-    SWP_FRAMECHANGED = 0x0020,
-}
-
 internal enum ShowWindowCommand
 {
     SW_RESTORE = 9,
 }
 
+[Flags]
+internal enum DwmThumbnailFlags : uint
+{
+    RectDestination = 0x1,
+    RectSource = 0x2,
+    Opacity = 0x4,
+    Visible = 0x8,
+    SourceClientAreaOnly = 0x10,
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct DWM_THUMBNAIL_PROPERTIES
+{
+    public uint dwFlags;
+    public RECT rcDestination;
+    public RECT rcSource;
+    public byte opacity;
+    [MarshalAs(UnmanagedType.Bool)] public bool fVisible;
+    [MarshalAs(UnmanagedType.Bool)] public bool fSourceClientAreaOnly;
+}
+
 internal static class Native
 {
     public const int MONITORINFOF_PRIMARY = 0x1;
-    public const uint MONITOR_DEFAULTTONULL = 0;
-    public const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
     public static readonly IntPtr DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = new(-4);
 
     public delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData);
@@ -74,9 +92,6 @@ internal static class Native
     [DllImport("user32.dll")]
     public static extern bool IsIconic(IntPtr hWnd);
 
-    [DllImport("user32.dll")]
-    public static extern bool IsZoomed(IntPtr hWnd);
-
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     public static extern int GetWindowTextLength(IntPtr hWnd);
 
@@ -87,24 +102,24 @@ internal static class Native
     public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
     [DllImport("user32.dll")]
-    public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
-
-    [DllImport("user32.dll")]
     public static extern IntPtr GetAncestor(IntPtr hwnd, uint gaFlags);
     public const uint GA_ROOT = 2;
 
     [DllImport("user32.dll")]
     public static extern IntPtr GetShellWindow();
 
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, SetWindowPosFlags uFlags);
-
     [DllImport("user32.dll")]
     public static extern bool ShowWindow(IntPtr hWnd, ShowWindowCommand nCmdShow);
 
-    [DllImport("user32.dll")]
-    public static extern IntPtr SetForegroundWindow(IntPtr hWnd);
+    [DllImport("dwmapi.dll")]
+    public static extern int DwmRegisterThumbnail(IntPtr hwndDestination, IntPtr hwndSource, out IntPtr phThumbnailId);
 
     [DllImport("dwmapi.dll")]
-    public static extern int DwmGetWindowAttribute(IntPtr hwnd, int dwAttribute, out RECT pvAttribute, int cbAttribute);
+    public static extern int DwmUnregisterThumbnail(IntPtr hThumbnailId);
+
+    [DllImport("dwmapi.dll")]
+    public static extern int DwmUpdateThumbnailProperties(IntPtr hThumbnailId, ref DWM_THUMBNAIL_PROPERTIES ptnProperties);
+
+    [DllImport("dwmapi.dll")]
+    public static extern int DwmQueryThumbnailSourceSize(IntPtr hThumbnail, out SIZE size);
 }

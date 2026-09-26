@@ -61,10 +61,4 @@ internal static class MonitorService
         }
         return union;
     }
-
-    public static bool HasMixedDpi(IEnumerable<MonitorInfo> monitors)
-    {
-        var scales = monitors.Select(m => m.DpiX).Distinct().ToList();
-        return scales.Count > 1;
-    }
 }
